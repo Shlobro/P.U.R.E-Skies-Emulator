@@ -1,20 +1,20 @@
 === Simulation Summary ===
-Area: 25.0 x 25.0
+Area: 40.0 x 40.0
 Number of Trash Pieces: 20
 Human Speed: 1.4
 Drone Speed: 16.0
 Multiple Drones? False
 Number of Drones: 1
 Drone Returns After Each Trash? True
-Human Pickup Time: 2.0
-Drone Pickup Time: 4.0
+Human Pickup Time: 1.5
+Drone Pickup Time: 3.0
 Human Capacity: 0
 Drone Capacity: 1
-Bin Position: (0, 0)
+Bin Position: (20.0, 20.0)
 
 --- Results ---
-Human Time: 141.88 s
-Human Distance: 140.82 m
-Drone Time (Longest among drones): 132.88 s
-Drone Distance (Sum of drones): 818.45 m
-Drone Speed-Up: 6.34%
+Human Time: 159.82 s
+Human Distance: 180.23 m
+Drone Time (Longest among drones): 96.07 s
+Drone Distance (Sum of drones): 550.19 m
+Drone Speed-Up: 39.89%
