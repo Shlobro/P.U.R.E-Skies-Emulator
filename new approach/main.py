@@ -1,3 +1,5 @@
+import pygame
+
 from simulation.engine import SimulationEngine
 from simulation.environment import Environment
 from simulation.routing import RoutePlanner
@@ -8,30 +10,35 @@ from results.analysis import analyze_logs
 def main():
     # 1. Create the environment
     environment = Environment()
-    # Example obstacle (rectangle): position (100,100), size 50x50
+
+    # 2. Add bins (for trash drop-off)
+    environment.add_bin(200, 200)
+    environment.add_bin(400, 400)
+
+    # 3. Add an obstacle (rectangle) to visualize it and store
     environment.add_obstacle(pygame.Rect(100, 100, 50, 50))
 
-    # 2. Define the routing planner
+    # 4. Define the routing planner
     route_planner = RoutePlanner(algorithm='nearest_neighbor')
 
-    # 3. Create agents
-    human = HumanAgent(name="Human1", position=(50,50))
-    drone = DroneAgent(name="Drone1", position=(300,300))
+    # 5. Create agents with capacities
+    human = HumanAgent(name="Human1", position=(50, 50), capacity=5)
+    drone = DroneAgent(name="Drone1", position=(300, 300), capacity=3)
 
     agents = [human, drone]
 
-    # 4. Create visualization
+    # 6. Create a Pygame visualization
     visualizer = PygameVisualizer(width=800, height=600)
 
-    # 5. Initialize the simulation engine
-    engine = SimulationEngine(environment, agents, route_planner, visualization=visualizer)
+    # 7. Initialize the simulation engine
+    engine = SimulationEngine(environment, agents, route_planner, visualization=visualizer, time_step=0.1)
 
-    # 6. Run the simulation
+    # 8. Run the simulation
     engine.run(max_time=300)
 
-    # 7. Analyze results
+    # 9. Analyze results (optional)
     analyze_logs(engine.logs)
 
+
 if __name__ == "__main__":
-    import pygame  # If you're using Pygame
     main()

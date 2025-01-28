@@ -3,13 +3,17 @@ import matplotlib.pyplot as plt
 
 def analyze_logs(logs):
     """
-    Create charts or tables from the logs.
-    logs is a list of dicts recorded at each time step.
+    Simple analysis: Plot each agent's X-position over time.
     """
     times = [entry['time'] for entry in logs]
 
-    # Example: Plot each agent's x-position over time
-    for agent_idx in range(len(logs[0]['agents'])):
+    # Ensure there's at least one log
+    if not logs:
+        return
+
+    num_agents = len(logs[0]['agents'])
+
+    for agent_idx in range(num_agents):
         x_positions = []
         for entry in logs:
             x_positions.append(entry['agents'][agent_idx]['position'][0])

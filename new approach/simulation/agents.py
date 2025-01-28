@@ -7,8 +7,11 @@ class BaseAgent:
         self.position = position
         self.route = []
         self.current_index = 0
+
+        # NEW: capacity and current_load to allow for 'needs_to_empty' checks
         self.capacity = capacity
         self.current_load = 0
+
         self.done = False
 
     def assign_route(self, route):
@@ -17,6 +20,12 @@ class BaseAgent:
 
     def is_done(self):
         return self.done
+
+    def needs_to_empty(self):
+        """
+        Returns True if the agent's load is at or above capacity.
+        """
+        return self.current_load >= self.capacity
 
     def get_state(self):
         """
@@ -36,6 +45,7 @@ class BaseAgent:
         if self.current_index >= len(self.route):
             self.done = True
             return
+
         # Move to next waypoint (placeholder: instant move)
         next_waypoint = self.route[self.current_index]
         if self.at_position(next_waypoint):
@@ -43,7 +53,7 @@ class BaseAgent:
             if self.current_index >= len(self.route):
                 self.done = True
         else:
-            # Move (no actual physics, just a direct step)
+            # Simple direct step without physics
             self.position = next_waypoint
 
     def at_position(self, waypoint):
@@ -62,7 +72,6 @@ class HumanAgent(BaseAgent):
         if self.is_done():
             return
 
-        # Simple fatigue model: speed decreases as fatigue increases
         speed = self.max_speed * (1 - self.fatigue)
         next_waypoint = self.route[self.current_index]
         dx, dy = next_waypoint[0] - self.position[0], next_waypoint[1] - self.position[1]
@@ -72,10 +81,10 @@ class HumanAgent(BaseAgent):
             self.current_index += 1
             if self.current_index >= len(self.route):
                 self.done = True
-            self.fatigue -= 0.05  # recover a bit at each waypoint
+            # Quick fatigue recovery at each waypoint
+            self.fatigue -= 0.05
             self.fatigue = max(self.fatigue, 0.0)
         else:
-            # Move towards next waypoint
             angle = math.atan2(dy, dx)
             move_dist = min(distance, speed * dt)
             self.position = (
@@ -104,32 +113,30 @@ class DroneAgent(BaseAgent):
         distance = math.sqrt(dx * dx + dy * dy)
 
         if distance < 0.1:
-            # Arrived at waypoint
             self.current_index += 1
             if self.current_index >= len(self.route):
                 self.done = True
             return
 
-        # Calculate desired acceleration direction
+        # Simple physics-based movement
         angle = math.atan2(dy, dx)
-
-        # Update velocity with a simple model
         vx, vy = self.velocity
         ax = self.max_accel * math.cos(angle)
         ay = self.max_accel * math.sin(angle)
 
-        # New velocity
+        # Update velocity
         new_vx = vx + ax * dt
         new_vy = vy + ay * dt
         new_speed = math.sqrt(new_vx * new_vx + new_vy * new_vy)
 
-        # Limit speed
+        # Cap speed
         if new_speed > self.max_speed:
             scale = self.max_speed / new_speed
             new_vx *= scale
             new_vy *= scale
 
         self.velocity = (new_vx, new_vy)
+
         # Move
         self.position = (
             self.position[0] + self.velocity[0] * dt,

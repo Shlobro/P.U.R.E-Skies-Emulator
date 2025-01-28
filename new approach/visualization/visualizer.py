@@ -1,7 +1,6 @@
 import pygame
 import sys
 
-
 class PygameVisualizer:
     def __init__(self, width=800, height=600):
         pygame.init()
@@ -10,9 +9,6 @@ class PygameVisualizer:
         self.font = pygame.font.SysFont(None, 24)
 
     def update(self, environment, agents, current_time):
-        """
-        Render the environment and agents each frame.
-        """
         # Basic event loop
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -21,14 +17,18 @@ class PygameVisualizer:
 
         self.screen.fill((255, 255, 255))  # White background
 
-        # Draw obstacles
+        # Draw obstacles (assuming they are rectangles)
         for obs in environment.obstacles:
             pygame.draw.rect(self.screen, (150, 150, 150), obs)
+
+        # Draw bins
+        for (bx, by) in environment.bins:
+            pygame.draw.circle(self.screen, (255, 0, 0), (int(bx), int(by)), 8)
 
         # Draw agents
         for agent in agents:
             x, y = agent.position
-            color = (0, 255, 0) if 'Drone' in agent.name else (0, 0, 255)
+            color = (0, 255, 0) if "Drone" in agent.name else (0, 0, 255)
             pygame.draw.circle(self.screen, color, (int(x), int(y)), 5)
 
         # Text overlay
