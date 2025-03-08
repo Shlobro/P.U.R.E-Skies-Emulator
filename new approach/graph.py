@@ -5,12 +5,12 @@ from matplotlib.figure import Figure
 
 def create_cost_comparison_figure(days, drone_costs, human_costs):
     """
-    Create a Matplotlib figure and return a FigureCanvas widget to be embedded in the PySide6 UI.
+    Create a Matplotlib figure and return a FigureCanvas widget to be embedded in the UI.
 
     X-axis: Days
     Y-axis: Total Cost
     """
-    fig = Figure(figsize=(5, 4))
+    fig = Figure(figsize=(6, 5))
     ax = fig.add_subplot(111)
     ax.plot(days, drone_costs, label='Drone Collection Cost', marker='o')
     ax.plot(days, human_costs, label='Human Collector Cost', marker='o')

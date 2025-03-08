@@ -25,7 +25,6 @@ def concurrency_simulation(num_agents, speed_m_s, trash_locations, capacity=0, s
     if num_agents <= 0 or speed_m_s <= 0 or not trash_locations:
         return 0.0, 0.0
 
-    # Each agent tracks: position, time_to_free, total_distance, capacity_used
     agents = []
     for _ in range(num_agents):
         agents.append({
@@ -39,20 +38,16 @@ def concurrency_simulation(num_agents, speed_m_s, trash_locations, capacity=0, s
     time_passed = 0.0
 
     while remaining_trash:
-        # 1. Pick the agent with the smallest time_to_free
         i_min = min(range(num_agents), key=lambda i: agents[i]["time_to_free"])
         t_min = agents[i_min]["time_to_free"]
 
-        # 2. Advance the global clock by t_min
         time_passed += t_min
         for ag in agents:
             ag["time_to_free"] -= t_min
 
-        # Agent i_min is now free
         agents[i_min]["time_to_free"] = 0.0
         current_pos = agents[i_min]["position"]
 
-        # 3. Assign the closest trash item to that agent
         closest_idx, closest_dist = None, float('inf')
         for idx, trash_pos in enumerate(remaining_trash):
             dist = math.hypot(trash_pos[0] - current_pos[0], trash_pos[1] - current_pos[1])
@@ -63,18 +58,15 @@ def concurrency_simulation(num_agents, speed_m_s, trash_locations, capacity=0, s
         if closest_idx is None:
             break
 
-        # Remove the trash item and update agent's travel info
         trash_pos = remaining_trash.pop(closest_idx)
         travel_time = closest_dist / speed_m_s
         agents[i_min]["time_to_free"] += travel_time
         agents[i_min]["total_distance"] += closest_dist
         agents[i_min]["position"] = trash_pos
 
-        # 4. Capacity check: if enabled (capacity > 0)
         if capacity > 0:
             agents[i_min]["capacity_used"] += 1
             if agents[i_min]["capacity_used"] >= capacity:
-                # Agent returns to the starting point
                 dist_back = math.hypot(trash_pos[0] - start[0], trash_pos[1] - start[1])
                 travel_time_back = dist_back / speed_m_s
                 agents[i_min]["time_to_free"] += travel_time_back
@@ -82,7 +74,6 @@ def concurrency_simulation(num_agents, speed_m_s, trash_locations, capacity=0, s
                 agents[i_min]["position"] = start
                 agents[i_min]["capacity_used"] = 0
 
-    # After assigning all trash, add the maximum remaining busy time to the global clock.
     final_time_seconds = time_passed + max(ag["time_to_free"] for ag in agents)
     total_distance = sum(ag["total_distance"] for ag in agents)
 
