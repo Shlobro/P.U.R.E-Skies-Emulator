@@ -5,7 +5,7 @@ from matplotlib.figure import Figure
 
 def create_cost_comparison_figure(days, drone_costs, human_costs):
     """
-    Create a Matplotlib figure and return a FigureCanvas widget that can be embedded in a PySide6 UI.
+    Create a Matplotlib figure and return a FigureCanvas widget to be embedded in the PySide6 UI.
 
     X-axis: Days
     Y-axis: Total Cost
