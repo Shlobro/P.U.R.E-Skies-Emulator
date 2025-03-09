@@ -8,19 +8,18 @@ def concurrency_simulation(num_agents, speed_m_s, trash_locations, capacity=0, s
     using a concurrency approach:
 
     1. Find the agent with the smallest 'time_to_free'.
-    2. Advance the global "time_passed" by that amount (subtract from all agents).
-    3. That agent picks up exactly one trash item (the closest). We add the travel
-       time to that agent's 'time_to_free', update its position, and total distance.
-    4. If capacity > 0, increment that agent's capacity usage. If capacity is reached,
-       the agent must return to the starting point; the travel time to return is added,
-       total distance updated, and capacity resets.
-    5. Remove the trash item from the list. Repeat until no trash items remain.
+    2. Advance the global clock by that amount (subtract it from all agents).
+    3. That agent picks up the closest trash item. Its travel time is added to its timer,
+       its position updated, and its total distance accumulated.
+    4. If capacity > 0, increment its capacity usage; when capacity is reached, the agent
+       immediately returns to the starting point (bin), adding the travel time and resetting capacity.
+    5. Remove the trash item and repeat until all trash is collected.
 
-    capacity = 0 means "unlimited capacity" (never forced to return until the end).
+    (capacity = 0 means "unlimited capacity.")
 
     Returns:
-        final_time_seconds: total simulation time (in seconds) when the last trash is collected.
-        total_distance: sum of distances traveled by all agents (for informational purposes).
+        final_time_seconds: total simulation time (seconds) when the last trash is collected.
+        total_distance: total distance traveled by all agents.
     """
     if num_agents <= 0 or speed_m_s <= 0 or not trash_locations:
         return 0.0, 0.0
@@ -87,8 +86,8 @@ def compute_costs(
         drone_initial_cost, days
 ):
     """
-    Compute the cumulative cost over the given number of days for both the drone and human environments,
-    based on the simulation's final_time_seconds for each.
+    Compute the cumulative cost over the given number of days for drones and humans,
+    based on the simulation’s final_time (in seconds) for each environment.
 
     Returns:
         days_list: list of day indices (0..days)
@@ -115,7 +114,7 @@ def compute_costs(
 def compute_daily_stats(final_time_seconds_drones, final_time_seconds_humans, n_drones, n_humans, drone_hourly_cost,
                         human_hourly_cost):
     """
-    Compute daily working hours and daily cost for each environment based on the simulation.
+    Compute daily working hours and daily cost for each environment.
     """
     final_time_hours_drones = final_time_seconds_drones / 3600.0
     final_time_hours_humans = final_time_seconds_humans / 3600.0

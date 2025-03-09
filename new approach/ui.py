@@ -1,17 +1,16 @@
 import sys
 from PySide6.QtWidgets import (
-    QApplication, QWidget, QFormLayout, QLineEdit, QPushButton,
+    QApplication, QWidget, QTabWidget, QFormLayout, QLineEdit, QPushButton,
     QVBoxLayout, QLabel, QComboBox, QHBoxLayout, QFrame
 )
 from PySide6.QtCore import Qt
-import data
-import simulation
-import graph
+import data, simulation, graph
+from visual_simulator import VisualSimulatorTab
 
-class TrashCostApp(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Trash Collection Cost Comparison")
+
+class CostSimulatorWidget(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
         self.init_ui()
         self.setStyleSheet("""
             QWidget {
@@ -38,18 +37,17 @@ class TrashCostApp(QWidget):
             QLabel {
                 color: #333333;
             }
+            QFrame {
+                background-color: #ffffff;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+            }
         """)
 
     def init_ui(self):
-        # Create a main horizontal layout: left panel for controls, right panel for graph.
-        main_layout = QHBoxLayout()
-
-        # Left panel layout (controls, inputs, and stats)
-        left_panel = QVBoxLayout()
-
+        layout = QVBoxLayout()
         self.form_layout = QFormLayout()
         self.input_fields = {}
-
         parameters = [
             ("Number of Drones:", "n_drones", "2"),
             ("Drone Speed (m/s):", "drone_speed", "5"),
@@ -66,48 +64,27 @@ class TrashCostApp(QWidget):
             ("Number of Days to Simulate:", "num_days", "30")
         ]
         for label_text, key, default in parameters:
-            line_edit = QLineEdit()
-            line_edit.setText(default)
-            self.input_fields[key] = line_edit
-            self.form_layout.addRow(label_text, line_edit)
-
-        # Dropdown for starting/bin position with nine options.
+            le = QLineEdit(default)
+            self.input_fields[key] = le
+            self.form_layout.addRow(label_text, le)
         self.start_position_combo = QComboBox()
-        options = [
-            "Center", "Top Left", "Top Center", "Top Right",
-            "Left Center", "Right Center", "Bottom Left", "Bottom Center", "Bottom Right"
-        ]
+        options = ["Center", "Top Left", "Top Center", "Top Right",
+                   "Left Center", "Right Center", "Bottom Left", "Bottom Center", "Bottom Right"]
         self.start_position_combo.addItems(options)
         self.form_layout.addRow("Starting/Bin Position:", self.start_position_combo)
 
-        left_panel.addLayout(self.form_layout)
-
-        # Run simulation button.
-        self.run_button = QPushButton("Generate Graph")
+        layout.addLayout(self.form_layout)
+        self.run_button = QPushButton("Run Cost Simulation")
         self.run_button.clicked.connect(self.run_simulation)
-        left_panel.addWidget(self.run_button)
-
-        # Label to display daily stats.
-        self.stats_label = QLabel("Daily stats will appear here.")
+        layout.addWidget(self.run_button)
+        self.stats_label = QLabel("Stats will appear here.")
         self.stats_label.setAlignment(Qt.AlignCenter)
-        left_panel.addWidget(self.stats_label)
-
-        left_panel.addStretch()  # Push content to the top.
-
-        # Right panel layout for graph.
-        right_panel = QVBoxLayout()
+        layout.addWidget(self.stats_label)
         self.graph_container = QFrame()
-        self.graph_container.setFrameShape(QFrame.StyledPanel)
         self.graph_layout = QVBoxLayout()
         self.graph_container.setLayout(self.graph_layout)
-        right_panel.addWidget(self.graph_container)
-        right_panel.addStretch()
-
-        # Add left and right panels to the main layout.
-        main_layout.addLayout(left_panel, 1)
-        main_layout.addLayout(right_panel, 1)
-
-        self.setLayout(main_layout)
+        layout.addWidget(self.graph_container)
+        self.setLayout(layout)
 
     def run_simulation(self):
         try:
@@ -125,18 +102,8 @@ class TrashCostApp(QWidget):
             num_trash = int(self.input_fields["num_trash"].text())
             num_days = int(self.input_fields["num_days"].text())
         except ValueError:
-            self.stats_label.setText("Error: Please enter valid numeric values for all fields.")
+            self.stats_label.setText("Error: Invalid numeric input.")
             return
-
-        if (
-            n_drones < 0 or n_humans < 0 or
-            drone_speed <= 0 or human_speed <= 0 or
-            num_trash <= 0 or num_days < 0
-        ):
-            self.stats_label.setText("Error: Check that numbers are valid and speeds/trash/days > 0.")
-            return
-
-        # Determine starting/bin position.
         start_choice = self.start_position_combo.currentText()
         start_options = {
             "Center": lambda w, h: (w / 2, h / 2),
@@ -150,60 +117,32 @@ class TrashCostApp(QWidget):
             "Bottom Right": lambda w, h: (w, 0)
         }
         start = start_options.get(start_choice, lambda w, h: (0, 0))(area_width, area_height)
-
         trash_locations = data.generate_trash_locations(area_width, area_height, num_trash)
-
         final_time_sec_drones, total_dist_drones = simulation.concurrency_simulation(
-            num_agents=n_drones,
-            speed_m_s=drone_speed,
-            trash_locations=trash_locations,
-            capacity=drone_capacity,
-            start=start
+            n_drones, drone_speed, trash_locations, drone_capacity, start
         )
-
         final_time_sec_humans, total_dist_humans = simulation.concurrency_simulation(
-            num_agents=n_humans,
-            speed_m_s=human_speed,
-            trash_locations=trash_locations,
-            capacity=human_capacity,
-            start=start
+            n_humans, human_speed, trash_locations, human_capacity, start
         )
-
         days_list, drone_costs, human_costs = simulation.compute_costs(
-            final_time_seconds_drones=final_time_sec_drones,
-            final_time_seconds_humans=final_time_sec_humans,
-            n_drones=n_drones,
-            n_humans=n_humans,
-            drone_hourly_cost=drone_hourly_cost,
-            human_hourly_cost=human_hourly_cost,
-            drone_initial_cost=drone_initial_cost,
-            days=num_days
+            final_time_sec_drones, final_time_sec_humans,
+            n_drones, n_humans, drone_hourly_cost, human_hourly_cost, drone_initial_cost, num_days
         )
-
-        (daily_hours_drones, daily_cost_drones,
-         daily_hours_humans, daily_cost_humans) = simulation.compute_daily_stats(
-            final_time_seconds_drones=final_time_sec_drones,
-            final_time_seconds_humans=final_time_sec_humans,
-            n_drones=n_drones,
-            n_humans=n_humans,
-            drone_hourly_cost=drone_hourly_cost,
-            human_hourly_cost=human_hourly_cost
+        daily_hours_drones, daily_cost_drones, daily_hours_humans, daily_cost_humans = simulation.compute_daily_stats(
+            final_time_sec_drones, final_time_sec_humans, n_drones, n_humans, drone_hourly_cost, human_hourly_cost
         )
-
+        saving_per_day = daily_cost_humans - daily_cost_drones
+        if saving_per_day > 0:
+            intersection_day = (n_drones * drone_initial_cost) / saving_per_day
+            intersection_str = f"Intersection Day: {intersection_day:.1f}"
+        else:
+            intersection_str = "No cost intersection (drones not cost–effective)."
+        savings_str = f"Daily Savings: ${saving_per_day:.2f} per day"
         stats_text = (
-            f"DRONES:\n"
-            f"  Concurrency Time: {daily_hours_drones:.2f} hrs\n"
-            f"  Total Distance: {total_dist_drones:.2f} m\n"
-            f"  Daily Cost: ${daily_cost_drones:.2f}\n"
-            f"  (Capacity: {drone_capacity if drone_capacity > 0 else 'Unlimited'})\n\n"
-            f"HUMANS:\n"
-            f"  Concurrency Time: {daily_hours_humans:.2f} hrs\n"
-            f"  Total Distance: {total_dist_humans:.2f} m\n"
-            f"  Daily Cost: ${daily_cost_humans:.2f}\n"
-            f"  (Capacity: {human_capacity if human_capacity > 0 else 'Unlimited'})"
-        )
+            f"DRONES: Time: {daily_hours_drones:.2f} hrs, Distance: {total_dist_drones:.2f} m, Cost: ${daily_cost_drones:.2f}\n"
+            f"HUMANS: Time: {daily_hours_humans:.2f} hrs, Distance: {total_dist_humans:.2f} m, Cost: ${daily_cost_humans:.2f}\n"
+            f"{intersection_str}\n{savings_str}")
         self.stats_label.setText(stats_text)
-
         canvas = graph.create_cost_comparison_figure(days_list, drone_costs, human_costs)
         self.clear_layout(self.graph_layout)
         self.graph_layout.addWidget(canvas)
@@ -214,11 +153,108 @@ class TrashCostApp(QWidget):
             if child.widget():
                 child.widget().deleteLater()
 
+class VisualSimulatorInputWidget(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.init_ui()
+    def init_ui(self):
+        layout = QVBoxLayout()
+        self.form_layout = QFormLayout()
+        self.input_fields = {}
+        parameters = [
+            ("Number of Drones:", "n_drones", "2"),
+            ("Drone Speed (m/s):", "drone_speed", "5"),
+            ("Drone Capacity (0=unlimited):", "drone_capacity", "0"),
+            ("Number of Humans:", "n_humans", "2"),
+            ("Human Speed (m/s):", "human_speed", "1.2"),
+            ("Human Capacity (0=unlimited):", "human_capacity", "0"),
+            ("Cleaning Area Width (m):", "area_width", "100"),
+            ("Cleaning Area Height (m):", "area_height", "100"),
+            ("Number of Trash Items:", "num_trash", "50")
+        ]
+        for label, key, default in parameters:
+            le = QLineEdit(default)
+            self.input_fields[key] = le
+            self.form_layout.addRow(label, le)
+        self.start_position_combo = QComboBox()
+        options = ["Center", "Top Left", "Top Center", "Top Right",
+                   "Left Center", "Right Center", "Bottom Left", "Bottom Center", "Bottom Right"]
+        self.start_position_combo.addItems(options)
+        self.form_layout.addRow("Starting/Bin Position:", self.start_position_combo)
+        layout.addLayout(self.form_layout)
+        self.start_button = QPushButton("Start Visual Simulation")
+        self.start_button.clicked.connect(self.start_simulation)
+        layout.addWidget(self.start_button)
+        self.visual_container = QVBoxLayout()
+        layout.addLayout(self.visual_container)
+        self.setLayout(layout)
+    def start_simulation(self):
+        try:
+            n_drones = int(self.input_fields["n_drones"].text())
+            drone_speed = float(self.input_fields["drone_speed"].text())
+            drone_capacity = int(self.input_fields["drone_capacity"].text())
+            n_humans = int(self.input_fields["n_humans"].text())
+            human_speed = float(self.input_fields["human_speed"].text())
+            human_capacity = int(self.input_fields["human_capacity"].text())
+            area_width = float(self.input_fields["area_width"].text())
+            area_height = float(self.input_fields["area_height"].text())
+            num_trash = int(self.input_fields["num_trash"].text())
+        except:
+            return
+        start_choice = self.start_position_combo.currentText()
+        start_options = {
+            "Center": lambda w, h: (w/2, h/2),
+            "Top Left": lambda w, h: (0, h),
+            "Top Center": lambda w, h: (w/2, h),
+            "Top Right": lambda w, h: (w, h),
+            "Left Center": lambda w, h: (0, h/2),
+            "Right Center": lambda w, h: (w, h/2),
+            "Bottom Left": lambda w, h: (0, 0),
+            "Bottom Center": lambda w, h: (w/2, 0),
+            "Bottom Right": lambda w, h: (w, 0)
+        }
+        start = start_options.get(start_choice, lambda w, h: (0,0))(area_width, area_height)
+        params = {
+            'n_drones': n_drones,
+            'drone_speed': drone_speed,
+            'drone_capacity': drone_capacity,
+            'n_humans': n_humans,
+            'human_speed': human_speed,
+            'human_capacity': human_capacity,
+            'area_width': area_width,
+            'area_height': area_height,
+            'num_trash': num_trash,
+            'start': start
+        }
+        self.clear_layout(self.visual_container)
+        sim_tab = VisualSimulatorTab(params)
+        self.visual_container.addWidget(sim_tab)
+    def clear_layout(self, layout):
+        while layout.count():
+            child = layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+
+
+class MainTabWidget(QTabWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.init_ui()
+
+    def init_ui(self):
+        self.cost_tab = CostSimulatorWidget()
+        self.visual_tab = VisualSimulatorInputWidget()
+        self.addTab(self.cost_tab, "Cost Simulation")
+        self.addTab(self.visual_tab, "Visual Simulation")
+
+
 def run_app():
     app = QApplication(sys.argv)
-    window = TrashCostApp()
-    window.show()
+    main_win = MainTabWidget()
+    main_win.resize(1000, 600)
+    main_win.show()
     sys.exit(app.exec())
+
 
 if __name__ == "__main__":
     run_app()
